@@ -228,11 +228,6 @@
     if error error!
     value
 
-  :: Return the byte value that is N bytes ahead, without moving the cursor.
-  :: Raises an error if there are not enough bytes to do so.
-  :fun peek_byte!(n USize = 0) U8
-    @_data[@_offset + n]!
-
   :: Advance the cursor forward to the end of the byte stream.
   :fun ref advance_to_end
     @_offset = @_data.size
@@ -301,18 +296,50 @@
     @_offset += U64.byte_width.usize
     value
 
-  // TODO: consider removing in favor of `take_byte!`
+  :: Read a byte from N bytes ahead of the cursor, without moving the cursor.
+  :: Raises an error if there are not enough bytes ahead to do so.
+  :fun peek_byte!(n USize = 0) U8
+    @_data[@_offset +! n]!
+
+  :: Read a `U16` from N bytes ahead of the cursor, without moving the cursor.
+  :: Raises an error if there are not enough bytes ahead to do so.
+  ::
+  :: For protocols using a platform-independent byte order, leverage the
+  :: `U16.be_to_native` or `U16.le_to_native` methods to convert the value
+  :: from its protocol-defined byte order to the native byte order.
+  :fun ref peek_native_u16!(n USize = 0) U16
+    @_data.read_native_u16!(@_offset +! n)
+
+  :: Read a `U32` from N bytes ahead of the cursor, without moving the cursor.
+  :: Raises an error if there are not enough bytes ahead to do so.
+  ::
+  :: For protocols using a platform-independent byte order, leverage the
+  :: `U32.be_to_native` or `U32.le_to_native` methods to convert the value
+  :: from its protocol-defined byte order to the native byte order.
+  :fun ref peek_native_u32!(n USize = 0) U32
+    @_data.read_native_u32!(@_offset +! n)
+
+  :: Read a `U64` from N bytes ahead of the cursor, without moving the cursor.
+  :: Raises an error if there are not enough bytes ahead to do so.
+  ::
+  :: For protocols using a platform-independent byte order, leverage the
+  :: `U64.be_to_native` or `U64.le_to_native` methods to convert the value
+  :: from its protocol-defined byte order to the native byte order.
+  :fun ref peek_native_u64!(n USize = 0) U64
+    @_data.read_native_u64!(@_offset +! n)
+
+  // DEPRECATED: use `take_byte!` or `peek_byte!` instead
   :fun read_byte!(offset USize) U8
-    @_data.read_byte!(@_mark_offset + offset)
+    @_data.read_byte!(@_mark_offset +! offset)
 
-  // TODO: consider removing in favor of `take_native_u16!`
+  // DEPRECATED: use `take_native_u16!` or `peek_native_u16!` instead
   :fun read_native_u16!(offset USize) U16
-    @_data.read_native_u16!(@_mark_offset + offset)
+    @_data.read_native_u16!(@_mark_offset +! offset)
 
-  // TODO: consider removing in favor of `take_native_u32!`
+  // DEPRECATED: use `take_native_u32!` or `peek_native_u32!` instead
   :fun read_native_u32!(offset USize) U32
-    @_data.read_native_u32!(@_mark_offset + offset)
+    @_data.read_native_u32!(@_mark_offset +! offset)
 
-  // TODO: consider removing in favor of `take_native_u64!`
+  // DEPRECATED: use `take_native_u64!` or `peek_native_u64!` instead
   :fun read_native_u64!(offset USize) U64
-    @_data.read_native_u64!(@_mark_offset + offset)
+    @_data.read_native_u64!(@_mark_offset +! offset)

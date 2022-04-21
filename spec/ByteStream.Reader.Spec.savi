@@ -107,6 +107,11 @@
     assert: stream.peek_byte!(10) == 's'
     assert error: stream.peek_byte!(11)
 
+    // We can also peek with wider types.
+    assert: stream.peek_native_u16!(2).le_to_native == U16[0x726f]
+    assert: stream.peek_native_u32!(2).le_to_native == U32[0x646c726f]
+    assert: stream.peek_native_u64!(2).le_to_native == U64[0x676e696c646c726f]
+
     // Rewind then advance the cursor across the first chunk boundary.
     stream.rewind_to_marker
     assert no_error: stream.advance!(3)
