@@ -112,6 +112,18 @@
   :: very start of the byte stream, including bytes no longer held in buffer.
   :fun bytes_behind_marker: @_mark_offset + @_lost_offset
 
+  :: Ensure that the underlying byte buffer is ready to handle the given amount
+  :: of bytes ahead of the current cursor position, without copying on receive.
+  :: This includes both bytes already in the buffer and space for future bytes.
+  ::
+  :: Note that this may trigger a copy of the current content of the buffer
+  :: if a reallocation is needed to ensure that number of bytes are available,
+  :: but that copy can be avoided if the full buffer is extracted first.
+  :fun ref reserve_bytes_ahead(amount USize)
+    actual_amount = try (amount +! @_offset | USize.max_value)
+    @_data.reserve(actual_amount)
+    @
+
   :: Reserve additional space in the underlying byte buffer, which forces a
   :: reallocation now, but sets a minimum number of bytes that the buffer
   :: can receive beyond the current size without forcing a reallocation.
@@ -119,6 +131,7 @@
   :: See `Bytes.reserve_additional` for more information.
   :fun ref reserve_additional(additional_space)
     @_data.reserve_additional(additional_space)
+    @
 
   :: Get the number of bytes in the currently marked token.
   :: That is, the number of bytes between the marker and the cursor.

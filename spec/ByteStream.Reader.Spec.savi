@@ -207,6 +207,27 @@
     assert: stream.token_byte_size == 0
     assert: stream.token_as_string == ""
 
+  :it "reserves at least a specified amount of space in front of the cursor"
+    stream = ByteStream.Reader.new
+    write_stream = ByteStream.Writer.to_reader(stream)
+
+    assert: stream.space_ahead == 0x4000
+    assert: stream.reserve_bytes_ahead(0x8000).space_ahead == 0x8000
+    assert: stream.reserve_bytes_ahead(0x8000).space_ahead == 0x8000
+
+    write_stream << b"hello"
+    assert no_error: write_stream.flush!
+
+    assert: stream.space_ahead == 0x8000
+    assert: stream.reserve_bytes_ahead(0x8000).space_ahead == 0x8000
+    assert: stream.reserve_bytes_ahead(0x8000).space_ahead == 0x8000
+
+    assert no_error: stream.advance!(3)
+
+    assert: stream.space_ahead == 0x7FFD
+    assert: stream.reserve_bytes_ahead(0x8000).space_ahead == 0xFFFD
+    assert: stream.reserve_bytes_ahead(0x8000).space_ahead == 0xFFFD
+
   :it "extracts an isolated token destructively from the stream"
     stream = ByteStream.Reader.new
     write_stream = ByteStream.Writer.to_reader(stream)
