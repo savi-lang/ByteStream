@@ -45,16 +45,16 @@
     assert: stream.token_as_string == "hell"
 
     // Try to advance further and fail partway through,
-    // leaving the cursor pointing to the end of the stream.
+    // leaving the cursor position unchanged.
     assert error: stream.advance!(4)
-    assert: stream.bytes_ahead == 0
+    assert: stream.bytes_ahead == 1
     assert: stream.bytes_ahead_of_marker == 5
-    assert: stream.space_ahead == initial_space - 5
+    assert: stream.space_ahead == initial_space - 4
     assert: stream.space_ahead_of_marker == initial_space
-    assert: stream.bytes_behind == 5
+    assert: stream.bytes_behind == 4
     assert: stream.bytes_behind_marker == 0
-    assert: stream.token_byte_size == 5
-    assert: stream.token_as_string == "hello"
+    assert: stream.token_byte_size == 4
+    assert: stream.token_as_string == "hell"
 
     // Rewind the cursor back to the marker position at the start of the stream.
     stream.rewind_to_marker
@@ -151,14 +151,14 @@
     // Rewind then try to advance the cursor past the end, raising an error.
     stream.rewind_to_marker
     assert error: stream.advance!(13)
-    assert: stream.bytes_ahead == 0
+    assert: stream.bytes_ahead == 12
     assert: stream.bytes_ahead_of_marker == 12
-    assert: stream.space_ahead == initial_space - 15
+    assert: stream.space_ahead == initial_space - 3
     assert: stream.space_ahead_of_marker == initial_space - 3
-    assert: stream.bytes_behind == 15
+    assert: stream.bytes_behind == 3
     assert: stream.bytes_behind_marker == 3
-    assert: stream.token_byte_size == 12
-    assert: stream.token_as_string == "loworldlings"
+    assert: stream.token_byte_size == 0
+    assert: stream.token_as_string == ""
 
     // Rewind then advance the cursor to the end exactly using advance_to_end.
     stream.rewind_to_marker

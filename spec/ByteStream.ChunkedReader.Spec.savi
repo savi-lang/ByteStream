@@ -24,8 +24,12 @@
     assert: stream.token_as_string == "hell"
 
     // Try to advance further and fail partway through,
-    // leaving the cursor pointing to the end of the stream.
+    // leaving the cursor position unchanged.
     assert error: stream.advance!(4)
+    assert: stream.bytes_ahead == 1
+
+    // Now advance to the end of the currently available bytes.
+    stream.advance_to_end
     assert: stream.bytes_ahead == 0
     assert: stream.bytes_ahead_of_marker == 5
     assert: stream.token_byte_size == 5
@@ -96,10 +100,10 @@
     // Rewind then try to advance the cursor past the end, raising an error.
     stream.rewind_to_marker
     assert error: stream.advance!(13)
-    assert: stream.bytes_ahead == 0
+    assert: stream.bytes_ahead == 12
     assert: stream.bytes_ahead_of_marker == 12
-    assert: stream.token_byte_size == 12
-    assert: stream.token_as_string == "loworldlings"
+    assert: stream.token_byte_size == 0
+    assert: stream.token_as_string == ""
 
     // Rewind then advance the cursor to the end exactly using advance_to_end.
     stream.rewind_to_marker
