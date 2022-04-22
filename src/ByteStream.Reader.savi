@@ -248,11 +248,12 @@
 
   :: Advance the cursor forward in the byte stream by N total bytes.
   :: Raises an error if there are not enough bytes to do so, leaving the cursor
-  :: pointing to the next future byte that will arrive in the byte stream.
+  :: position unchanged in that case.
   :fun ref advance!(n USize)
-    @_offset += n
-    if (@_offset > @_data.size) (
-      @_offset = @_data.size
+    offset = @_offset +! n
+    if (offset <= @_data.size) (
+      @_offset = offset
+    |
       error!
     )
     @
