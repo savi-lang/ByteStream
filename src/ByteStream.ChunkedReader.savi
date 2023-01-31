@@ -218,7 +218,7 @@
       // by returning a String that uses a subset of the same underlying buffer.
       try (
         String.from_bytes(@_chunks[@_chunk_index]!)
-          .trim(@_mark_offset.isize, @_offset.isize)
+          .trim(@_mark_offset, @_offset)
       |
         // Failed to get the chunk. This can happen when the cursor and marker
         // are both pointing to the end of the byte stream.
@@ -231,7 +231,7 @@
       string String'iso = String.new_iso(@token_byte_size)
       @_each_token_slice -> (chunk, start, end |
         chunk_string = String.from_bytes(chunk)
-        string.concat_byte_slice(chunk_string, start.isize, end.isize)
+        string.concat_byte_slice(chunk_string, start, end)
         None // TODO: this explicit None should not be needed
       )
       --string
