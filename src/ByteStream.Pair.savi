@@ -1,0 +1,13 @@
+
+:: Convenience constructor for a `ByteStream.Reader` and `ByteStream.Writer`
+:: pair, as commonly used in testing code that uses byte streams.
+:struct ByteStream.Pair
+  :let read ByteStream.Reader
+  :let write ByteStream.Writer
+
+  :new
+    read_backend = ByteStream.Reader.Private.new
+    @read = read_backend.public
+    @write = ByteStream.Writer.new(
+      ByteStream.Sink.ToReader.new(read_backend)
+    )

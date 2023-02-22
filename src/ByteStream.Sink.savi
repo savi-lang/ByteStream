@@ -33,12 +33,13 @@
 :: considered mostly unimportant.
 :class ByteStream.Sink.ToReader
   :is ByteStream.Sink
-  :is ByteStream.Source
 
-  :let reader ByteStream.Reader
+  :let _reader ByteStream.Reader.Private
   :let _chunks Array(Bytes): []
   :var _total_size USize: 0
-  :new (@reader)
+  :new (@_reader)
+
+  :fun reader: @_reader.public
 
   :fun ref write_bytes(bytes Bytes'val)
     @_chunks << bytes
@@ -46,18 +47,11 @@
     @
 
   :fun ref write_flush!
-    @reader.reserve_additional(@_total_size)
-    @reader.receive_from!(@)
-    @
-
-  :fun ref emit_bytes_into!(buffer Bytes'ref) USize
-    @_chunks.each -> (chunk | buffer << chunk)
-    bytes_read = @_total_size
-
+    @_reader.reserve_additional(@_total_size)
+    @_chunks.each -> (chunk | @_reader << chunk)
     @_chunks.clear
     @_total_size = 0
-
-    bytes_read
+    @
 
 :: This trait is an alternative to `ByteStream.Sink`, used when the sink is
 :: an actor that receives the bytes asynchronously instead of synchronously.
