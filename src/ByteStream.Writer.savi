@@ -7,15 +7,18 @@
 :class ByteStream.Writer
   :is ByteStream.Writable
 
-  :let target ByteStream.Sink
+  :let _target ByteStream.Sink
   :var _current_chunk: Bytes.new_iso
-  :new (@target)
+  :new (@_target)
 
+  :: DEPRECATED: Use `ByteStream.Pair.new` to create a reader and writer pair.
   :new to_reader(reader ByteStream.Reader)
-    @target = ByteStream.Sink.ToReader.new(reader)
+    @_target = ByteStream.Sink.ToReader.new(
+      ByteStream.Reader.Private._new_deprecated(reader)
+    )
 
   :new to_actor(actor ByteStream.Sink.Actor)
-    @target = ByteStream.Sink.ToActor.new(actor)
+    @_target = ByteStream.Sink.ToActor.new(actor)
 
   :: Add a chunk of bytes to the stream.
   ::
@@ -28,7 +31,7 @@
     |
       // Otherwise, we close out the current chunk and then write the new chunk.
       @_finish_current_chunk
-      @target.write_bytes(chunk)
+      @_target.write_bytes(chunk)
     )
     @
 
@@ -60,7 +63,7 @@
   :: from its native byte order to the specified byte order first.
   :fun ref push_native_u64(value): @_current_chunk.push_native_u64(value)
 
-  :: Try to write all data that is currently buffered to the `target` sink.
+  :: Try to write all data that is currently buffered to the target sink.
   ::
   :: Raises an error if there is still some data buffered that could not yet be
   :: flushed, either because the underlying sink was not in a writable state,
@@ -71,11 +74,11 @@
   :: some amount of data still remains in the internal buffer to be transferred.
   :fun ref flush! @
     @_finish_current_chunk
-    @target.write_flush!
+    @_target.write_flush!
     @
 
   :fun ref _finish_current_chunk
-    if @_current_chunk.is_not_empty @target.write_bytes(
+    if @_current_chunk.is_not_empty @_target.write_bytes(
       // Pass along the chunk and allocate a new "current chunk" with the
       // same amount of space as old "current chunk", making the assumption
       // that the typical amount written per chunk will be fairly stable,

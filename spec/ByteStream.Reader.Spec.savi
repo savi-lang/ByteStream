@@ -8,8 +8,10 @@
     assert: ByteStream.Reader.new(0x2000).space_ahead == 0x2000
 
   :it "can accept chunks, advance, and read tokens"
-    stream = ByteStream.Reader.new
-    write_stream = ByteStream.Writer.to_reader(stream)
+    streams = ByteStream.Pair.new
+    stream = streams.read
+    write_stream = streams.write
+
     initial_space = stream.space_ahead
 
     assert: stream.bytes_ahead == 0
@@ -208,8 +210,9 @@
     assert: stream.token_as_string == ""
 
   :it "reserves at least a specified amount of space in front of the cursor"
-    stream = ByteStream.Reader.new
-    write_stream = ByteStream.Writer.to_reader(stream)
+    streams = ByteStream.Pair.new
+    stream = streams.read
+    write_stream = streams.write
 
     assert: stream.space_ahead == 0x4000
     assert: stream.reserve_bytes_ahead(0x8000).space_ahead == 0x8000
@@ -229,8 +232,10 @@
     assert: stream.reserve_bytes_ahead(0x8000).space_ahead == 0xFFFD
 
   :it "extracts an isolated token destructively from the stream"
-    stream = ByteStream.Reader.new
-    write_stream = ByteStream.Writer.to_reader(stream)
+    streams = ByteStream.Pair.new
+    stream = streams.read
+    write_stream = streams.write
+
     write_stream << b"hel"
     write_stream << b"lowo"
     write_stream << b"rld"
@@ -246,8 +251,10 @@
     assert: stream.bytes_behind_marker == 8
 
   :it "yields each byte of a token"
-    stream = ByteStream.Reader.new
-    write_stream = ByteStream.Writer.to_reader(stream)
+    streams = ByteStream.Pair.new
+    stream = streams.read
+    write_stream = streams.write
+
     write_stream << b"hel"
     write_stream << b"lowo"
     write_stream << b"rld"
@@ -271,8 +278,10 @@
     collected.clear
 
   :it "yields each byte of a token until the block returns True"
-    stream = ByteStream.Reader.new
-    write_stream = ByteStream.Writer.to_reader(stream)
+    streams = ByteStream.Pair.new
+    stream = streams.read
+    write_stream = streams.write
+
     write_stream << b"hel"
     write_stream << b"lowo"
     write_stream << b"rld"
@@ -294,8 +303,10 @@
     collected.clear
 
   :it "compares a token for equivalence to a given string"
-    stream = ByteStream.Reader.new
-    write_stream = ByteStream.Writer.to_reader(stream)
+    streams = ByteStream.Pair.new
+    stream = streams.read
+    write_stream = streams.write
+
     write_stream << b"hel"
     write_stream << b"lowo"
     write_stream << b"rld"
@@ -319,8 +330,10 @@
     assert: stream.is_token_equal_to("lloWor").is_false
 
   :it "compares an ASCII-lowercased token for equivalence to a given string"
-    stream = ByteStream.Reader.new
-    write_stream = ByteStream.Writer.to_reader(stream)
+    streams = ByteStream.Pair.new
+    stream = streams.read
+    write_stream = streams.write
+
     write_stream << b"HeL"
     write_stream << b"LoWo"
     write_stream << b"RlD"
@@ -344,8 +357,10 @@
     assert: stream.is_token_ascii_lowercase_equal_to("lloWor").is_false
 
   :it "parses a token as a positive integer in decimal notation"
-    stream = ByteStream.Reader.new
-    write_stream = ByteStream.Writer.to_reader(stream)
+    streams = ByteStream.Pair.new
+    stream = streams.read
+    write_stream = streams.write
+
     write_stream << b"192"
     write_stream << b"8374"
     write_stream << b"650"
@@ -369,8 +384,10 @@
     assert error: stream.token_as_positive_integer!
 
   :it "reads integers in native, big and little endianness at specific offsets"
-    stream = ByteStream.Reader.new
-    write_stream = ByteStream.Writer.to_reader(stream)
+    streams = ByteStream.Pair.new
+    stream = streams.read
+    write_stream = streams.write
+
     write_stream << b"garbage"
     write_stream << Bytes.from_array([0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01])
     assert no_error: write_stream.flush!

@@ -1,3 +1,6 @@
+:: DEPRECATED: Implementers of this trait must soon use the methods
+:: exposed by `ByteStream.Reader.Private` instead.
+::
 :: This trait is meant to create a common interface that can be used to get
 :: bytes into a ByteStream.Reader, including compatibility with efficient
 :: patterns that write directly into a buffer from an I/O or network stack.

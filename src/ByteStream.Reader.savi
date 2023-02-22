@@ -37,6 +37,8 @@
   :new (space USize = 0x4000)
     @_data = Bytes.new(space)
 
+  :: DEPRECATED: Methods like this will soon only be in `ByteStream.Reader.Private`.
+  ::
   :: Reset this object back to an empty state so that it can be reused.
   :: All data held and all cursor and mark state will be dropped.
   ::
@@ -50,15 +52,8 @@
     @_lost_offset = 0
     @
 
-  :: Drop any bytes that have been passed by both the marker and cursor,
-  :: allowing buffers to be garbage collected even in the middle of a stream.
+  :: DEPRECATED: Methods like this will soon only be in `ByteStream.Reader.Private`.
   ::
-  :: If at the end of a stream it is more efficient to call clear instead.
-  // TODO: Implement the compact function
-  // :fun ref compact
-  //   // ...
-  //   @
-
   :: Receive some bytes from the given source, extending the end of the stream.
   :: Returns the number of bytes that were received, as reported by the source.
   :: Raises an error if the source has become permanently closed off.
@@ -112,6 +107,8 @@
   :: very start of the byte stream, including bytes no longer held in buffer.
   :fun bytes_behind_marker: @_mark_offset + @_lost_offset
 
+  :: DEPRECATED: Methods like this will soon only be in `ByteStream.Reader.Private`.
+  ::
   :: Ensure that the underlying byte buffer is ready to handle the given amount
   :: of bytes ahead of the current cursor position, without copying on receive.
   :: This includes both bytes already in the buffer and space for future bytes.
@@ -124,6 +121,8 @@
     @_data.reserve(actual_amount)
     @
 
+  :: DEPRECATED: Methods like this will soon only be in `ByteStream.Reader.Private`.
+  ::
   :: Reserve additional space in the underlying byte buffer, which forces a
   :: reallocation now, but sets a minimum number of bytes that the buffer
   :: can receive beyond the current size without forcing a reallocation.
@@ -342,18 +341,111 @@
   :fun ref peek_native_u64!(n USize = 0) U64
     @_data.read_native_u64!(@_offset +! n)
 
-  // DEPRECATED: use `take_byte!` or `peek_byte!` instead
+  :: DEPRECATED: use `take_byte!` or `peek_byte!` instead
   :fun read_byte!(offset USize) U8
     @_data.read_byte!(@_mark_offset +! offset)
 
-  // DEPRECATED: use `take_native_u16!` or `peek_native_u16!` instead
+  :: DEPRECATED: use `take_native_u16!` or `peek_native_u16!` instead
   :fun read_native_u16!(offset USize) U16
     @_data.read_native_u16!(@_mark_offset +! offset)
 
-  // DEPRECATED: use `take_native_u32!` or `peek_native_u32!` instead
+  :: DEPRECATED: use `take_native_u32!` or `peek_native_u32!` instead
   :fun read_native_u32!(offset USize) U32
     @_data.read_native_u32!(@_mark_offset +! offset)
 
-  // DEPRECATED: use `take_native_u64!` or `peek_native_u64!` instead
+  :: DEPRECATED: use `take_native_u64!` or `peek_native_u64!` instead
   :fun read_native_u64!(offset USize) U64
     @_data.read_native_u64!(@_mark_offset +! offset)
+
+:: This exposes extra features for `ByteStream.Reader` related to writing bytes
+:: into the buffer, to be read later by readers of the `ByteStream.Reader`.
+::
+:: It is named `ByteStream.Reader.Private` because the "owner" of the stream
+:: will typically want to keep it privately to prevent readers of the stream
+:: from being able to write into it, or otherwise tamper with the buffers.
+::
+:: Some FFI-oriented ways of filling the buffer will rely on the privateness
+:: of this in their strategy for memory safety. For example, Windows IOCP
+:: has a somewhat awkward flow where it takes a pointer to the end of the buffer
+:: and asynchronously writes bytes into it, then tells us how many later.
+:: A flow like this must critically keep would-be tamperers from being able
+:: to invalidate the buffer pointer, or that part of the buffer at all.
+:: So to keep this kind of workflow safe, all methods that could potentially
+:: cause the `ByteStream.Reader` to reallocate its buffer or write into it are
+:: kept in this private view, which can be withheld from would-be tamperers.
+:struct ByteStream.Reader.Private
+  :let public ByteStream.Reader
+
+  :new (space USize = 0x4000)
+    @public = ByteStream.Reader.new(space)
+
+  :: DEPRECATED: Use `new` instead.
+  :new _new_deprecated(@public)
+
+  :: Append the given `bytes` into the underlying buffer.
+  ::
+  :: The bytes will become immediately available for stream readers to read.
+  :fun ref "<<"(bytes Bytes)
+    @public._data << bytes
+    @
+
+  :: Reserve a specific amount of space for writing new bytes into the buffer.
+  ::
+  :: The buffer will not grow (or shrink) if the amount of space available
+  :: for writing already meets or exceeds the given requested amount.
+  ::
+  :: This may result in a copy operation, if the buffer needs to grow and if
+  :: the buffer contains some data not yet extracted away by stream readers.
+  ::
+  :: However, judicious use of this method is the right way to avoid copy
+  :: operations and re-allocations later, by reserving "up front" enough buffer
+  :: to hold the expected amount of incoming data in the next "batch" before
+  :: stream readers will drain the buffer of its content again.
+  :: This is most applicable to framed byte stream protocols wherein it is
+  :: possible to know ahead of time how much buffer will be needed for content.
+  :fun ref reserve_additional(space_for_writing)
+    data = @public._data
+    data.reserve(data.size.saturating_add(space_for_writing))
+    @
+
+  :: Reserve a reasonably-sized buffer for writing directly into from FFI code,
+  :: then return the pointer and the amount of space available for writing.
+  ::
+  :: We guarantee here for the caller's peace of mind that the amount of
+  :: space available for writing will never be zero.
+  ::
+  :: The expected workflow after this method is to write the bytes as needed,
+  :: then call `add_to_size_possibly_including_uninitialized_memory`
+  :: to expose those newly written bytes to readers of the stream.
+  :fun ref prepare_cpointer_for_writing Pair(CPointer(U8), USize)
+    data = @public._data
+
+    if (data.space == data.size) (
+      data.reserve(data.space.saturating_add(0x4000))
+    )
+
+    Pair(CPointer(U8), USize).new(
+      data.cpointer(data.size)
+      data.space - data.size
+    )
+
+  :: Call this method to indicate that some bytes have been written
+  :: into the underlying data buffer via some FFI code.
+  :: The bytes will become exposed to the readers of the stream.
+  ::
+  :: This usually happens after a call to `prepare_cpointer_for_writing`,
+  :: and after that C pointer has been written to via some FFI call.
+  ::
+  :: This is safe in that it will truncate the maximum size to be
+  :: no larger than the space in the currently allocated buffer.
+  :: However, it may expose bytes that haven't been initialized yet,
+  :: if this method is used in a situation where those bytes haven't
+  :: actually been initialized by FFI. In such a situation, you'd see
+  :: undefined byte values, but there would be no memory unsafety.
+  :fun ref add_to_size_possibly_including_uninitialized_memory(
+    added_bytes USize
+  )
+    @public._data.resize_possibly_including_uninitialized_memory(
+      @public._data.size.saturating_add(added_bytes)
+    )
+    @
