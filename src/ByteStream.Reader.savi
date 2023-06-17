@@ -188,7 +188,7 @@
     @token_byte_size == other.size && (
       index USize = 0
       unequal = @each_token_byte_until -> (byte |
-        lower_byte = if (byte >= 'A' && byte <= 'Z') (byte - 'A' + 'a' | byte)
+        lower_byte = if byte >= 'A' && byte <= 'Z' (byte - 'A' + 'a' | byte)
         unequal_byte = try (lower_byte != other.byte_at!(index) | True)
         index += 1
         unequal_byte
@@ -229,7 +229,7 @@
     value U64 = 0
     error = False
     @each_token_byte_until -> (byte |
-      if (byte >= '0' && byte <= '9') (
+      if byte >= '0' && byte <= '9' (
         value = value * 10 + (byte - '0').u64
         False // continue iterating
       |
@@ -250,7 +250,7 @@
   :: position unchanged in that case.
   :fun ref advance!(n USize)
     offset = @_offset +! n
-    if (offset <= @_data.size) (
+    if offset <= @_data.size (
       @_offset = offset
     |
       error!
@@ -420,7 +420,7 @@
   :fun ref prepare_cpointer_for_writing Pair(CPointer(U8), USize)
     data = @public._data
 
-    if (data.space == data.size) (
+    if data.space == data.size (
       data.reserve(data.space.saturating_add(0x4000))
     )
 

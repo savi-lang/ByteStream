@@ -121,10 +121,10 @@
     iter_chunk_index = @_mark_chunk_index
     iter_offset = @_mark_offset
     early_stop = False
-    while (!early_stop && iter_chunk_index < @_chunk_index) (
+    while !early_stop && iter_chunk_index < @_chunk_index (
       try (
         chunk = @_chunks[iter_chunk_index]!
-        while (!early_stop && iter_offset < chunk.size) (
+        while !early_stop && iter_offset < chunk.size (
           try (early_stop = yield chunk[iter_offset]!)
           iter_offset += 1
         )
@@ -134,7 +134,7 @@
     )
     try (
       chunk = @_chunks[iter_chunk_index]!
-      while (!early_stop && iter_offset < @_offset) (
+      while !early_stop && iter_offset < @_offset (
         try (early_stop = yield chunk[iter_offset]!)
         iter_offset += 1
       )
@@ -159,7 +159,7 @@
     iter_chunk_index = @_mark_chunk_index
     iter_offset = @_mark_offset
     early_stop = False
-    while (!early_stop && iter_chunk_index < @_chunk_index) (
+    while !early_stop && iter_chunk_index < @_chunk_index (
       try (
         chunk = @_chunks[iter_chunk_index]!
         early_stop = yield (chunk, iter_offset, chunk.size)
@@ -200,7 +200,7 @@
     @token_byte_size == other.size && (
       index USize = 0
       unequal = @each_token_byte_until -> (byte |
-        lower_byte = if (byte >= 'A' && byte <= 'Z') (byte - 'A' + 'a' | byte)
+        lower_byte = if byte >= 'A' && byte <= 'Z' (byte - 'A' + 'a' | byte)
         unequal_byte = try (lower_byte != other.byte_at!(index) | True)
         index += 1
         unequal_byte
@@ -213,7 +213,7 @@
   :: the returned String will share the underlying buffer instead of copying.
   :: Otherwise a new String buffer is assembled by copying from multiple chunks.
   :fun token_as_string String
-    if (@_mark_chunk_index == @_chunk_index) (
+    if @_mark_chunk_index == @_chunk_index (
       // If the token begins and ends in the same chunk, we can avoid copying
       // by returning a String that uses a subset of the same underlying buffer.
       try (
@@ -244,7 +244,7 @@
     value U64 = 0
     error = False
     @each_token_byte_until -> (byte |
-      if (byte >= '0' && byte <= '9') (
+      if byte >= '0' && byte <= '9' (
         value = value * 10 + (byte - '0').u64
         False // continue iterating
       |
@@ -262,7 +262,7 @@
     peek_offset = @_offset
     remaining_n = n
     current_chunk_remaining_count = @_chunks[peek_chunk_index]!.size - @_offset
-    while (remaining_n >= current_chunk_remaining_count) (
+    while remaining_n >= current_chunk_remaining_count (
       remaining_n -= current_chunk_remaining_count
       peek_chunk_index += 1
       peek_offset = 0
@@ -281,13 +281,13 @@
   :: Raises an error if there are not enough bytes to do so, leaving the cursor
   :: position unchanged in that case.
   :fun ref advance!(n USize)
-    error! if (n > @_bytes_ahead)
+    error! if n > @_bytes_ahead
 
     // Iterate through each chunk, keeping track of how much of the
     // goal number of bytes remain to be consumed in the advancement.
     remaining_n = n
     current_chunk_remaining_count = @_chunks[@_chunk_index]!.size - @_offset
-    while (remaining_n > current_chunk_remaining_count) (
+    while remaining_n > current_chunk_remaining_count (
       remaining_n -= current_chunk_remaining_count
       @_chunk_index += 1
       @_offset = 0
@@ -307,7 +307,7 @@
     while (yield chunk[@_offset]!) (
       @_offset += 1
       @_bytes_ahead -= 1
-      if (@_offset == chunk.size) (
+      if @_offset == chunk.size (
         @_chunk_index += 1
         @_offset = 0
         chunk = @_chunks[@_chunk_index]!
@@ -323,13 +323,13 @@
     end_offset USize = offset + num_bytes
 
     @each_token_byte_until -> (byte |
-      if (pos >= offset && pos < end_offset) (
+      if pos >= offset && pos < end_offset (
         value = value.bit_shl(8).bit_or(byte.u64)
       )
       pos += 1
       pos >= end_offset
     )
-    if (pos == end_offset) (value | error!)
+    if pos == end_offset (value | error!)
 
   :fun read_byte!(offset USize) U8
     @_read_be_uint!(offset, 1).u8

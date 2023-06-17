@@ -178,7 +178,7 @@
     // Collect part of the stream, as dictated by the condition.
     stream.advance_to_end
     stream.each_token_byte_until -> (byte |
-      if (byte == 'w') (
+      if byte == 'w' (
         True // stop iteration
       |
         collected << byte

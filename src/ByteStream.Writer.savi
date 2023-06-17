@@ -24,7 +24,7 @@
   ::
   :: It won't actually get written until the `flush` method is called.
   :fun ref "<<"(chunk Bytes'val)
-    if (chunk.size <= 64) (
+    if chunk.size <= 64 (
       // If the chunk fits on a 64-bit cache line, we consider it more cheap to
       // copy it into the current chunk than to save it as a separate chunk.
       @_current_chunk << chunk
