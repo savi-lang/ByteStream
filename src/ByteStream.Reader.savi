@@ -213,6 +213,51 @@
   :fun ref extract_all
     @advance_to_end.extract_token // TODO: more efficient than chop-truncate?
 
+  :: Advance the cursor until the next newline character (`\n`) is found,
+  :: then extract everything from the current marker position forward.
+  ::
+  :: This is useful for line-oriented protocols where each line is a token.
+  ::
+  :: The newline itself and preceding carriage return (`\r`) if present
+  :: will not be included in the extracted bytes.
+  ::
+  :: If no newline is found in the stream, an error will be raised, so that
+  :: the caller can wait for more bytes to be read before trying again.
+  :fun ref extract_line! Bytes'iso
+    // Advance until '\n', raising an error if the stream hasn't seen one yet.
+    @advance_while! -> (byte | byte != '\n')
+    bytes = @extract_token
+
+    // Remove trailing '\r' if present.
+    try (
+      if bytes[bytes.size - 1]! == '\r' ( // TODO: use Bytes.last! after next Savi release
+        bytes.trim_in_place(0, bytes.size - 1)
+      )
+    )
+
+    // Skip '\n' and be ready to read the next line.
+    @advance!(1) // can't error - we know there's a '\n'
+    @mark_here
+
+    --bytes
+
+  :: Extract a byte range from the stream, where the byte range is prefixed by
+  :: an unsigned 32-bit big-endian byte size indicator to frame the protocol.
+  ::
+  :: This is a convenience method for a common network protocol technique.
+  :: If your protocol needs differ, you can easily use this method's
+  :: simple implementation as a basis from which to deviate as needed.
+  ::
+  :: The size prefix itself will not be included in the extracted bytes.
+  ::
+  :: If the stream buffer doesn't have enough bytes yet, an error will be
+  :: raised, so that the caller can wait for more bytes before trying again.
+  :fun ref extract_frame_u32_be! Bytes'iso
+    size = @peek_native_u32!.be_to_native
+    error! if size.usize > @bytes_ahead -! 4
+    @advance!(4), @mark_here
+    @advance!(size.usize), @extract_token
+
   :: Return the portion of the stream between the marker and the cursor,
   :: as an immutable String.
   :fun token_as_string String

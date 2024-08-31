@@ -250,6 +250,54 @@
     assert: stream.bytes_behind == 8
     assert: stream.bytes_behind_marker == 8
 
+  :it "extracts a line from the stream (if ready)"
+    streams = ByteStream.Pair.new
+    stream = streams.read
+    write_stream = streams.write
+
+    assert error: stream.extract_line!
+
+    write_stream << b"hel"
+    assert no_error: write_stream.flush!
+    assert error: stream.extract_line!
+
+    write_stream << b"lo\nw"
+    assert no_error: write_stream.flush!
+    assert: stream.extract_line! == b"hello"
+    assert error: stream.extract_line!
+
+    write_stream << b"orld\r"
+    assert no_error: write_stream.flush!
+    assert error: stream.extract_line!
+
+    write_stream << b"\n\n"
+    assert no_error: write_stream.flush!
+    assert: stream.extract_line! == b"world"
+    assert: stream.extract_line! == b""
+    assert error: stream.extract_line!
+
+  :it "extracts a 32-bit-prefixed frame (if ready)"
+    streams = ByteStream.Pair.new
+    stream = streams.read
+    write_stream = streams.write
+
+    assert error: stream.extract_frame_u32_be!
+
+    write_stream << b"\x00\x00\x00"
+    assert no_error: write_stream.flush!
+    assert error: stream.extract_frame_u32_be!
+
+    write_stream << b"\x05hel"
+    assert no_error: write_stream.flush!
+    assert error: stream.extract_frame_u32_be!
+
+    write_stream << b"lo\x00\x00\x00\x05worldextra"
+    assert no_error: write_stream.flush!
+    assert: stream.extract_frame_u32_be! == b"hello"
+    assert: stream.extract_frame_u32_be! == b"world"
+    assert error: stream.extract_frame_u32_be!
+    assert: stream.extract_all == b"extra"
+
   :it "yields each byte of a token"
     streams = ByteStream.Pair.new
     stream = streams.read
