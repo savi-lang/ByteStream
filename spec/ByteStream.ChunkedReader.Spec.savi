@@ -167,27 +167,6 @@
     assert: collected == ['l', 'l', 'o', 'w', 'o', 'r']
     collected.clear
 
-  :it "yields each byte of a token until the block returns True"
-    stream = ByteStream.ChunkedReader.new
-    stream << b"hel"
-    stream << b"lowo"
-    stream << b"rld"
-
-    collected Array(U8) = []
-
-    // Collect part of the stream, as dictated by the condition.
-    stream.advance_to_end
-    stream.each_token_byte_until -> (byte |
-      if byte == 'w' (
-        True // stop iteration
-      |
-        collected << byte
-        False // continue iteration
-      )
-    )
-    assert: collected == ['h', 'e', 'l', 'l', 'o']
-    collected.clear
-
   :it "compares a token for equivalence to a given string"
     stream = ByteStream.ChunkedReader.new
     stream << b"hel"

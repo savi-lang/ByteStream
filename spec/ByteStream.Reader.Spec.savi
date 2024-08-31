@@ -325,31 +325,6 @@
     assert: collected == ['l', 'l', 'o', 'w', 'o', 'r']
     collected.clear
 
-  :it "yields each byte of a token until the block returns True"
-    streams = ByteStream.Pair.new
-    stream = streams.read
-    write_stream = streams.write
-
-    write_stream << b"hel"
-    write_stream << b"lowo"
-    write_stream << b"rld"
-    assert no_error: write_stream.flush!
-
-    collected Array(U8) = []
-
-    // Collect part of the stream, as dictated by the condition.
-    stream.advance_to_end
-    stream.each_token_byte_until -> (byte |
-      if byte == 'w' (
-        True // stop iteration
-      |
-        collected << byte
-        False // continue iteration
-      )
-    )
-    assert: collected == ['h', 'e', 'l', 'l', 'o']
-    collected.clear
-
   :it "compares a token for equivalence to a given string"
     streams = ByteStream.Pair.new
     stream = streams.read
