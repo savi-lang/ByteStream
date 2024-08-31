@@ -110,22 +110,13 @@
   :: That is, the bytes between the marker and the cursor.
   :fun each_token_byte None
     :yields U8 for None
-    @each_token_byte_until -> (byte | yield byte, False)
-    None
-
-  :: Yield each byte in the currently marked token until the block returns True.
-  :: Returns True if the block stopped iteration early by returning True.
-  :: Otherwise returns False, indicating that iteration fully completed.
-  :fun each_token_byte_until Bool
-    :yields U8 for Bool
     iter_chunk_index = @_mark_chunk_index
     iter_offset = @_mark_offset
-    early_stop = False
-    while !early_stop && iter_chunk_index < @_chunk_index (
+    while iter_chunk_index < @_chunk_index (
       try (
         chunk = @_chunks[iter_chunk_index]!
-        while !early_stop && iter_offset < chunk.size (
-          try (early_stop = yield chunk[iter_offset]!)
+        while iter_offset < chunk.size (
+          try (yield chunk[iter_offset]!)
           iter_offset += 1
         )
       )
@@ -134,79 +125,60 @@
     )
     try (
       chunk = @_chunks[iter_chunk_index]!
-      while !early_stop && iter_offset < @_offset (
-        try (early_stop = yield chunk[iter_offset]!)
+      while iter_offset < @_offset (
+        try (yield chunk[iter_offset]!)
         iter_offset += 1
       )
     )
-    early_stop
 
   :: For the bytes in the currently marked token, yield each associated chunk,
   :: along with the start and end offset of the chunk that are within the token.
   :: This is used internally for chunk-wise comparison and copying operations.
   :fun _each_token_slice None
     :yields (Bytes, USize, USize) for None
-    @_each_token_slice_until -> (chunk, start, end |
-      yield (chunk, start, end)
-      False // continue iteration
-    )
-    None
-
-  :: Same as the each_token_byte function, but allows the yield block to return
-  :: True to stop iteration early, and in such a case the function returns True.
-  :fun _each_token_slice_until Bool
-    :yields (Bytes, USize, USize) for Bool
     iter_chunk_index = @_mark_chunk_index
     iter_offset = @_mark_offset
-    early_stop = False
-    while !early_stop && iter_chunk_index < @_chunk_index (
+    while iter_chunk_index < @_chunk_index (
       try (
         chunk = @_chunks[iter_chunk_index]!
-        early_stop = yield (chunk, iter_offset, chunk.size)
+        yield (chunk, iter_offset, chunk.size)
       )
       iter_chunk_index += 1
       iter_offset = 0
     )
-    if !early_stop (
-      try (
-        chunk = @_chunks[iter_chunk_index]!
-        early_stop = yield (chunk, iter_offset, @_offset)
-      )
+    try (
+      chunk = @_chunks[iter_chunk_index]!
+      yield (chunk, iter_offset, @_offset)
     )
-    early_stop
 
   :: Return True if the bytes in the currently marked token are equivalent
   :: to the bytes referenced by the given string.
   :fun is_token_equal_to(other (Bytes'box | String'box))
-    @token_byte_size == other.size && (
-      other_start USize = 0
-      unequal = @_each_token_slice_until -> (chunk, start, end |
-        slice_size = end - start
+    return False unless @token_byte_size == other.size
+    other_start USize = 0
+    @_each_token_slice -> (chunk, start, end |
+      slice_size = end - start
 
-        unequal_slice = chunk
-          .is_slice_equal(start, other, other_start, slice_size)
-          .not
+      return False unless chunk
+        .is_slice_equal(start, other, other_start, slice_size)
 
-        other_start += slice_size
-        unequal_slice
-      )
-      unequal.invert
+      other_start += slice_size
     )
+    True
 
   :: Return True if the bytes in the currently marked token, after lowercasing
   :: any encountered ASCII letters (A-Z) are equivalent to the given string.
   :: That is, the given string should be supplied as already being lowercase.
   :fun is_token_ascii_lowercase_equal_to(other (Bytes'box | String'box))
-    @token_byte_size == other.size && (
-      index USize = 0
-      unequal = @each_token_byte_until -> (byte |
-        lower_byte = if byte >= 'A' && byte <= 'Z' (byte - 'A' + 'a' | byte)
-        unequal_byte = try (lower_byte != other.byte_at!(index) | True)
-        index += 1
-        unequal_byte
-      )
-      unequal.invert
+    return False unless @token_byte_size == other.size
+    index USize = 0
+    @each_token_byte -> (byte |
+      lower_byte = if byte >= 'A' && byte <= 'Z' (byte - 'A' + 'a' | byte)
+      unequal_byte = try (lower_byte != other.byte_at!(index) | True)
+      return False if unequal_byte
+      index += 1
     )
+    True
 
   :: Return the portion of the stream between the marker and the cursor, as an
   :: immutable String. If the portion happened to be within a single chunk,
@@ -243,16 +215,10 @@
   :fun token_as_positive_integer! U64
     value U64 = 0
     error = False
-    @each_token_byte_until -> (byte |
-      if byte >= '0' && byte <= '9' (
-        value = value * 10 + (byte - '0').u64
-        False // continue iterating
-      |
-        error = True // TODO: should we just raise an error here directly?
-        True // stop iteration
-      )
+    @each_token_byte -> (byte |
+      error! if byte < '0' || byte > '9'
+      value = value * 10 + (byte - '0').u64
     )
-    if error error!
     value
 
   :: Return the byte value that is N bytes ahead, without moving the cursor.
@@ -322,12 +288,12 @@
     pos USize = 0
     end_offset USize = offset + num_bytes
 
-    @each_token_byte_until -> (byte |
+    @each_token_byte -> (byte |
       if pos >= offset && pos < end_offset (
         value = value.bit_shl(8).bit_or(byte.u64)
       )
       pos += 1
-      pos >= end_offset
+      break if pos >= end_offset
     )
     if pos == end_offset (value | error!)
 

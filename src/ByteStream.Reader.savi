@@ -140,15 +140,8 @@
   :: That is, the bytes between the marker and the cursor.
   :fun each_token_byte None
     :yields U8 for None
-    @each_token_byte_until -> (byte | yield byte, False)
+    @_data.each(@_mark_offset, @_offset) -> (byte | yield byte)
     None
-
-  :: Yield each byte in the currently marked token until the block returns True.
-  :: Returns True if the block stopped iteration early by returning True.
-  :: Otherwise returns False, indicating that iteration fully completed.
-  :fun each_token_byte_until Bool
-    :yields U8 for Bool
-    @_data.each_until(@_mark_offset, @_offset) -> (byte | yield byte)
 
   :: For the bytes in the currently marked token, yield each associated chunk,
   :: along with the start and end offset of the chunk that are within the token.
@@ -157,44 +150,37 @@
     :yields for None // TODO: unify Bytes cap with ByteStream.ChunkedReader signature?
     yield (@_data, @_mark_offset, @_offset)
 
-  :: Same as the each_token_byte function, but allows the yield block to return
-  :: True to stop iteration early, and in such a case the function returns True.
-  :fun _each_token_slice_until Bool
-    :yields for Bool // TODO: unify Bytes cap with ByteStream.ChunkedReader signature?
-    yield (@_data, @_mark_offset, @_offset)
-
   :: Return True if the bytes in the currently marked token are equivalent
   :: to the bytes referenced by the given string.
   :fun is_token_equal_to(other (Bytes'box | String'box))
-    @token_byte_size == other.size && (
-      other_start USize = 0
-      unequal = @_each_token_slice_until -> (chunk, start, end |
-        slice_size = end - start
+    return False if @token_byte_size != other.size
 
-        unequal_slice = chunk
-          .is_slice_equal(start, other, other_start, slice_size)
-          .not
+    other_start USize = 0
+    @_each_token_slice -> (chunk, start, end |
+      slice_size = end - start
 
-        other_start += slice_size
-        unequal_slice
-      )
-      unequal.invert
+      return False unless chunk
+        .is_slice_equal(start, other, other_start, slice_size)
+
+      other_start += slice_size
     )
+    True
 
   :: Return True if the bytes in the currently marked token, after lowercasing
   :: any encountered ASCII letters (A-Z) are equivalent to the given string.
   :: That is, the given string should be supplied as already being lowercase.
   :fun is_token_ascii_lowercase_equal_to(other (Bytes'box | String'box))
-    @token_byte_size == other.size && (
-      index USize = 0
-      unequal = @each_token_byte_until -> (byte |
-        lower_byte = if byte >= 'A' && byte <= 'Z' (byte - 'A' + 'a' | byte)
-        unequal_byte = try (lower_byte != other.byte_at!(index) | True)
-        index += 1
-        unequal_byte
-      )
-      unequal.invert
+    return False if @token_byte_size != other.size
+
+    index USize = 0
+    @each_token_byte -> (byte |
+      lower_byte = if byte >= 'A' && byte <= 'Z' (byte - 'A' + 'a' | byte)
+      unequal_byte = try (lower_byte != other.byte_at!(index) | True)
+      return False if unequal_byte
+
+      index += 1
     )
+    True
 
   :: Return the portion of the stream between the marker and the cursor,
   :: as isolated Bytes, advancing the marker past the token so that it may
@@ -272,17 +258,10 @@
   :: If other (non-digit) bytes are encountered, an error is raised.
   :fun token_as_positive_integer! U64
     value U64 = 0
-    error = False
-    @each_token_byte_until -> (byte |
-      if byte >= '0' && byte <= '9' (
-        value = value * 10 + (byte - '0').u64
-        False // continue iterating
-      |
-        error = True // TODO: should we just raise an error here directly?
-        True // stop iteration
-      )
+    @each_token_byte -> (byte |
+      error! if byte < '0' || byte > '9'
+      value = value * 10 + (byte - '0').u64
     )
-    if error error!
     value
 
   :: Advance the cursor forward to the end of the byte stream.
